@@ -1,0 +1,9 @@
+(
+  name: "Installation",
+  summary: "Tools to keep an installation running.",
+  version: "0.0.1",
+  schelp: "Installation",
+  dependencies: [],
+  license: "GPL",
+  copyright: "Charles Hutchins 2016"
+)

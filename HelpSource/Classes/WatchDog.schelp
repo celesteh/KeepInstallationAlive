@@ -1,0 +1,136 @@
+TITLE:: WatchDog
+summary:: A system for monitoring if threads have stopped
+categories:: Undocumented classes
+related:: Classes/Installation
+
+DESCRIPTION::
+WatchDogs are a way of detecting if another, monitored thread has crashed. The monitored thread should check in every time it goes through a loop or periodically during time-consuming tasks. If the thread goes too long between check-ins, the watchdog can be told to take gradually more invasive action to restart the stopped thread.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Crate and start a new WatchDog thread.
+
+ARGUMENT:: walker
+The DogWalker that is monitoring this WatchDog
+
+ARGUMENT:: dur
+How should we wait before seeing if the monitored thread has checked in, in seconds
+
+ARGUMENT:: initialWait
+How long to ewait before starting to monitor, in seconds
+
+ARGUMENT:: tries
+How many missed checkIns are allowed before the WatchDog starts executing its actions
+
+ARGUMENT:: canQuit
+If true, the WatchDog has the power to quit sclang, if all other tries to restart have failed
+
+
+
+INSTANCEMETHODS::
+
+METHOD:: checkIn
+This should be called by the thread which the WatchDog is monitoring.
+
+METHOD:: addFix
+Add an action to the end of the list of things to be tried.
+
+ARGUMENT:: action
+A function
+
+METHOD:: addFirstFix
+Inserts an action as the the first thing to be tried.
+
+ARGUMENT:: action
+A function
+
+METHOD:: addPenultimateFix
+Inserts an action as the one-from-the-last thing to be tried
+
+ARGUMENT:: action
+A function
+
+METHOD:: removeFixAt
+Remove one of the actions from the list of things to try
+
+ARGUMENT:: index
+index of the fix to remove
+
+METHOD:: sizeFix
+The number of actions before the WatchDog exhausts all possibilities
+
+
+
+METHOD:: putFix
+Add an action to be invoked when the monitored thread has not checked in
+
+ARGUMENT:: index
+The ordering for in what order this fix should be tried.
+
+ARGUMENT:: action
+A function invoked after EMPHASIS::index:: other items.
+
+
+METHOD:: dur
+How should we wait before seeing if the monitored thread has checked in, in seconds
+
+
+METHOD:: tries
+The number of allowable missed checkins before the WatchDog starts to take actions
+
+
+METHOD:: maxTimeToFail
+
+returns:: The maximum number of seconds before the WatchDog gives up completely
+
+
+
+
+
+
+
+
+METHOD:: canQuit
+If true, the WatchDog has the power to quit sclang, if all other tries to restart have failed
+
+
+
+
+
+
+
+
+
+
+
+METHOD:: lastCheckIn
+The last check in time in seconds since gmtime
+
+
+
+METHOD:: play
+Play the WatchDog thread
+
+METHOD:: stop
+Stop the WatchDog thread
+
+
+METHOD:: resume
+Resume the WatchDog thread
+
+METHOD:: reset
+Reset the WatchDog thread
+
+
+METHOD:: pause
+Pause the WatchDog thread
+
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::

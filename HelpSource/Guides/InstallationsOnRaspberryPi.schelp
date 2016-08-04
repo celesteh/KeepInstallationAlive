@@ -1,0 +1,43 @@
+TITLE::Deploying an Installation on a Raspberry Pi
+categories:: Control
+related:: Classes/Installation, Classes/WatchDog, Guides/KeepAnInstallationRunning
+summary:: How to deploy an installation on a small computer, like a Raspberry Pi
+
+section:: Introduction
+
+Start with link::Guides/KeepAnInstallationRunning::. The Pi is much the same, except everything will crash at some point.
+
+This guide should work with any version of superCollider at 3.6 or later. This is written for Raspbian Wheezy but should work with other versions of Raspbian. It will not work with other Pi operating systems, such as windows, without substantial modifications, especially to the Bash Script
+
+There are a few important differences between running an installation on a laptop and on a Pi.
+list::
+## The Pi has fewer resources and crashes much more often and in more ways.
+## The SC server can be started separately from sclang
+## Backing up a Pi system is just duplicating an SD card, so anything weird or dangerous you do is much less risky than it would be on your laptop
+::
+
+SuperCollider should run on any Pi.  In practice, the Pi 1 may have trouble coping with anything remotely complex.  The 2 and 3 are able to do much more.
+
+section:: Getting the Pi Ready
+
+Are you planning on attaching a monitor to the Pi? If so, you will want to tell to boot to the desktop. Otherwise, you want to boot to a command line. You can set these options by running sudo raspi-config. My only experience thus far is with the desktop, because I am also generating some simple graphics. Otherwise, I would definitely boot to the command line. The Pi does not have a lot of processor power and if you're not using the Desktop, you can save some space for installation to run.
+
+Theheadphone jack on Raspberry Pis is extremely low quality.  There is an audio 'hate' available, but it does not work with jack.  To get reasonable sound you will eihter need to get a small USB stick audio card or else use the HDMI audio output.  Nicer USB sound cards may also work, but it's impossible to know without testing.
+
+The version of SuperCollider that ships with Raspbian has often been old or broken and therefore, you may have to build superCollider yourself. This is time consuming, but easy.  Once you have built it once, you can make an image of the SD card, zip it and save it. Then, if you need a second copy, you can just write it to a new SD card.  For more on how to build, see link:: https://supercollider.github.io/development/building-raspberrypi.html::
+
+section:: Getting your code ready
+subsection:: Efficiency
+
+SC 3.6 on a Pi runs exactly the same code as SC 3.6 on my laptop. Therefore, installation-ready code should run fine on a Pi. There is less memory on a Pi, which may limit the number of Buffers you can have loaded at one time. I have not experienced any issues with running out of memory. The processor, however, does climb to 100% quite easily and this can lead to audio stuttering. Your synthdefs and invocation should be as efficient as possible. If you always fire off three synths at the same time, say, each with a different frequency, you may want to combine them into one single synthdef that takes three frequency arguments. Starting off one more complicated synthdef requires fewer resources than three simpler synthdefs running at the same time.
+
+If you are running the the desktop, you can see how much of the CPU is being used by looking at the monitor box in the upper right hand corner of the screen. If you are running headless and have connected to the Pi via ssh, you can monitor the CPU using the command 'top'. Open a second terminal window, connect to the Pi and type in top -u pi at the command line. The program will tell you the computer's load average and how much of the CPU each program is using.
+
+Within SuperCollider, to find out how much CPU the server is using, Server.default.avgCPU returns a number between 0 and 100. I've used this information to help calculate how many steps to use for a fade in the graphics. A busier CPU means I fade in fewer steps with longer pauses between steps.
+
+subsection:: Starting the server separately
+
+This is a constraint imposed by the build instructions for 3.6. This may be a good idea for later version, depending on how crash-rprone your Pi is. Fortunately, very little needs changing inside your source code.
+
+As the server is actually started outside SuperCollider, the port number for the server can (and will) change. We will tell SuperCollider about the port number via command line arguments - we will tell our program about the port number when we start running it. The arguments will be available to our program in an array: thisProcess.argv.  See link::Guides/KeepAnInstallationRunning:: for more information on passing arguments. If you use the Installation class as described there, your SuperCollider code will not change.
+

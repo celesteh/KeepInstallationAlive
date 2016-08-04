@@ -1,0 +1,192 @@
+TITLE:: Installation
+summary:: Tools to detect and recover from crashes
+categories:: Control
+related:: Classes/WatchDog, Guides/KeepAnInstallationRunning
+
+DESCRIPTION::
+Installation monitors threads and the server to check for crashes. It can be instructed to try increasingly invasive recovery methods and, if those fail, to quit sclang.
+
+CLASSMETHODS::
+
+METHOD::new
+Create a new Installation object
+argument:: config_file_path
+An optional full path to a configuration file
+argument:: port
+An optional number for a Server port. The default Server will use this port number, if set.
+Discussion::
+Configuration files can store information needed across multiple files and by different languages, including bash and python. The file format is:
+code::
+# This line is commented out
+name=value
+::
+To use this these pairs,
+code::
+(
+var inst;
+inst = Installation("/home/me/Documents/code/sc/my_installation.config");
+inst.config[\name].postln;
+)
+::
+With the example file above, this would print code:: "value" ::
+
+
+INSTANCEMETHODS::
+
+Method:: port
+Get or set the Server port
+
+Method:: s
+Returns::
+Server.default
+
+Method:: boot
+argument:: loadSynths
+If true, it tries to load the SynthDefs known to the installation
+argument:: action
+A function evaluated when the server is known to be booted
+argument:: checkIn
+If true, then check in with the watchdog associated with id
+argument:: id
+The id of the WatchDog to chekc in to
+Discussion::
+This method must be called from a Routine. It tries to the boot the server, on the port given when the Installation object is created (or on the default port, if nothing is specified). Once the server is known to be booted, the action is evaluated, optionally synths are loaded, and the thread optionally checks in.
+If the server is unable to boot, sclang quits.
+
+Method:: addSynthDef
+Because the installation object may need to restart the server, you will need to add your SynthDefs to it, so it can re-load them.
+argument:: synthDef
+A SynthDef object
+
+Method:: loadSynthDefs
+Add all of the synthDefs to the Server
+
+Method:: monitorServer
+Returns:: True if the Server is being monitored, False if not
+
+Method:: setMonitorServer
+argument:: monitor
+True turns monitoring on, false turns it off
+argument:: dur
+How many consecutive seconds of silence are acceptable. If this is set to 0, RMS will not be monitored.
+argument:: threshold
+The minimum allowable RMS
+argument:: watchDogDur
+How many consecutive seconds the server can fail to send notifications
+argument:: action
+Evaluated when the server falls silent for more than the given duration
+Returns:: This returns the WatchDog associated with server notifications
+
+code::
+(
+{
+	var inst, dog;
+	inst = Installation();
+	inst.boot;
+	inst.addSynthDef(
+		SynthDef(\sin, {|out=0, amp=0.2, dur=10, freq=440|
+			var sin, env;
+			sin = SinOsc.ar(freq, 0, amp);
+			env = EnvGen.kr(Env.perc(0.01, dur), doneAction:2);
+			Out.ar(out, (sin * env).dup);
+	}));
+
+	dog = inst.setMonitorServer(true, action:{Synth(\sin)});
+
+}.fork
+)
+::
+
+
+Method:: addWatchDog
+Add a Thread to monitor whether a particular execution thread has checked in
+argument:: id
+A unique symbol for the new WatchDog
+argument:: dur
+How often this thread is expected to check in, in seconds
+argument:: initialWait
+How long before we start monitoring
+argument:: tries
+How many missed checkIns are allowed before the WatchDog starts executing its actions
+argument:: canQuit
+If true, the watchdog is allowed to quit sclang
+Returns:: A new WatchDog
+
+Method:: checkIn
+Let the WatchDog know your thread is still alive
+argument:: id
+The symbol associated with the WatchDog you are checking in with
+
+Method:: checkInWithFile
+Write a file whenever we check in with any WatchDog.
+argument:: filePath
+What file we should write.  It's reccomended that this information be put into a config file
+code::
+checkin_file=/path/to/the/file
+::
+
+
+Method:: wizard
+An interactive set of popup windows for creating the bash scripts needed to run your program as an installation on any system. These should work on unix systems, including OS X, however, because the installation location of SuperCollider on Macs is variable, this will need to be re-run whenever the program is moved to a new Mac.
+code::
+(
+var inst;
+
+inst = Installation.new();
+//...
+// ...
+i = inst;
+)
+// in another tab
+i.wizard
+::
+At the end of this process, in order to use the new scripts, the code in your installation file would change in order to read arguments passed to your program: code:: inst = Installation.new(thisProcess.argv[0], thisProcess.argv[1]); ::
+
+
+EXAMPLES::
+code::
+{
+i = Installation();
+i.boot();
+i.addSynthDef(
+	SynthDef(\long, {|out=0, amp=0.2, freq=440, dur=1, pan=0|
+
+		var env, sin, panner;
+		env = EnvGen.kr(Env.sine(dur), timeScale:10, doneAction:2);
+		sin = SinOsc.ar(freq, 0, amp);
+		panner = Pan2.ar(sin, pan, env);
+		Out.ar(out, panner);
+	})
+);
+
+	i.monitorServer_(true, 10, {p.resume});
+
+	d = i.addWatchDog(\pbind);
+	d.addFix({p.resume});
+	d.addFix({p.start});
+	d.addFix({
+		p.reset;
+		p.start;
+	});
+
+
+
+	p = Pseq([
+		Pbind(
+			\instrument, \long,
+			\scale, Scale.choose,
+			\degree, Pwhite(0, 7, 5),
+			\dur, 0.2,
+			\isalive, Pfunc({i.checkIn(\pbind)})
+		),
+		Pbind(
+			\instrument, \long,
+			\scale, Scale.choose,
+			\degree, Pwhite(0, 7, 5),
+			\dur, 0.5,
+			\isalive, Pfunc({i.checkIn(\pbind)})
+		)], 1
+	).play;
+
+}.fork
+::
