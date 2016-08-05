@@ -1,6 +1,6 @@
 WatchDog {
 
-	var walker, alive,task, thread, fixes, <lastCheckIn, <>tries, <>dur, <>canQuit;
+	var walker, alive,task, thread, fixes, <lastCheckIn, <tries, <>dur, <>canQuit;
 
 	*new { |walker, dur=5, initialWait=0, tries=3, canQuit=true|
 		^super.new.init(walker, dur, initialWait, tries, canQuit)
@@ -18,6 +18,13 @@ WatchDog {
 
 	}
 
+	tries_{|num_tries|
+
+		(num_tries < 3).if ({
+			"It's a good idea to keep this at or above 3!".warn
+		});
+		tries = num_tries;
+	}
 
 	putFix {|index, action|
 

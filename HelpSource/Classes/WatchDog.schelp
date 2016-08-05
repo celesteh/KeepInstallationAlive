@@ -78,7 +78,8 @@ How should we wait before seeing if the monitored thread has checked in, in seco
 
 
 METHOD:: tries
-The number of allowable missed checkins before the WatchDog starts to take actions
+The number of allowable missed checkins before the WatchDog starts to take actions. This number
+should normally be at least 3. This is because of the possibility of race conditions.
 
 
 METHOD:: maxTimeToFail

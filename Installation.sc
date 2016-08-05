@@ -53,7 +53,7 @@ Installation {
 		port.notNil.if({
 			Server.default = Server(\Local, NetAddr("localhost", port.asInteger));
 			//s = Server.default;
-			CmdPeriod.run;
+			//CmdPeriod.run;
 		});
 	}
 
