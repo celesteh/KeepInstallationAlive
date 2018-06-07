@@ -1,15 +1,15 @@
-TITLE:: Installation
+TITLE:: KeepInstallationAlive
 summary:: Tools to detect and recover from crashes
 categories:: Control
 related:: Classes/WatchDog, Guides/KeepAnInstallationRunning
 
 DESCRIPTION::
-Installation monitors threads and the server to check for crashes. It can be instructed to try increasingly invasive recovery methods and, if those fail, to quit sclang.
+KeepInstallationAlive monitors threads and the server to check for crashes. It can be instructed to try increasingly invasive recovery methods and, if those fail, to quit sclang.
 
 CLASSMETHODS::
 
 METHOD::new
-Create a new Installation object
+Create a new KeepInstallationAlive object
 argument:: config_file_path
 An optional full path to a configuration file
 argument:: port
@@ -50,7 +50,7 @@ If true, then check in with the watchdog associated with id
 argument:: id
 The id of the WatchDog to chekc in to
 Discussion::
-This method must be called from a Routine. It tries to the boot the server, on the port given when the Installation object is created (or on the default port, if nothing is specified). Once the server is known to be booted, the action is evaluated, optionally synths are loaded, and the thread optionally checks in.
+This method must be called from a Routine. It tries to the boot the server, on the port given when the KeepInstallationAlive object is created (or on the default port, if nothing is specified). Once the server is known to be booted, the action is evaluated, optionally synths are loaded, and the thread optionally checks in.
 If the server is unable to boot, sclang quits.
 
 Method:: addSynthDef
@@ -81,7 +81,7 @@ code::
 (
 {
 	var inst, dog;
-	inst = Installation();
+	inst = KeepInstallationAlive();
 	inst.boot;
 	inst.addSynthDef(
 		SynthDef(\sin, {|out=0, amp=0.2, dur=10, freq=440|
@@ -132,7 +132,7 @@ code::
 (
 var inst;
 
-inst = Installation.new();
+inst = KeepInstallationAlive.new();
 //...
 // ...
 i = inst;
@@ -140,13 +140,13 @@ i = inst;
 // in another tab
 i.wizard
 ::
-At the end of this process, in order to use the new scripts, the code in your installation file would change in order to read arguments passed to your program: code:: inst = Installation.new(thisProcess.argv[0], thisProcess.argv[1]); ::
+At the end of this process, in order to use the new scripts, the code in your installation file would change in order to read arguments passed to your program: code:: inst = KeepInstallationAlive.new(thisProcess.argv[0], thisProcess.argv[1]); ::
 
 
 EXAMPLES::
 code::
 {
-i = Installation();
+i = KeepInstallationAlive();
 i.boot();
 i.addSynthDef(
 	SynthDef(\long, {|out=0, amp=0.2, freq=440, dur=1, pan=0|

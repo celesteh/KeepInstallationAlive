@@ -1,4 +1,4 @@
-Installation {
+KeepInstallationAlive {
 
 	var watchDogs, <config, <>synthdefs, <monitorServer, lastrms, monitorSynth, osc_listener;
 
@@ -321,7 +321,7 @@ Installation {
 				"Installation files now created in %.".format(dir),
 				{
 					this.makeWin(
-						"You should modify your code to read two arguments from the commandline and pass them to Installation.new:\n\tInstallation(thisProcess.argv[0], thisProcess.argv[1]);",
+						"You should modify your code to read two arguments from the commandline and pass them to KeepInstallationAlive.new:\n\tKeepInstallationAlive(thisProcess.argv[0], thisProcess.argv[1]);",
 						{
 							hasGui.if({
 								this.makeWin(
@@ -659,12 +659,12 @@ Installation {
 		watchDogs.writeFile.isNil.if({
 
 			"You have not specified a temporary file to create so that bash scripts can determine if your installation is still running.".postln;
-			"Please modify your program. See the help file on Installation.checkInWithFile.".postln;
+			"Please modify your program. See the help file on KeepInstallationAlive.checkInWithFile.".postln;
 		});
 
 
-		"You should modify your code to read two arguments from the commandline and pass them to Installation.new:\n".postln;
-		"\tInstallation(thisProcess.argv[0], thisProcess.argv[1]);".postln;
+		"You should modify your code to read two arguments from the commandline and pass them to KeepInstallationAlive.new:\n".postln;
+		"\tKeepInstallationAlive(thisProcess.argv[0], thisProcess.argv[1]);".postln;
 
 		"If you intend to run this installation on a mac, you will need to update sclang so it has the full path of scalng on your computer. See the help for more.".postln;
 

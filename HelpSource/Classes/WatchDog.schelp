@@ -1,7 +1,7 @@
 TITLE:: WatchDog
 summary:: A system for monitoring if threads have stopped
 categories:: Undocumented classes
-related:: Classes/Installation
+related:: Classes/KeepInstallationAlive
 
 DESCRIPTION::
 WatchDogs are a way of detecting if another, monitored thread has crashed. The monitored thread should check in every time it goes through a loop or periodically during time-consuming tasks. If the thread goes too long between check-ins, the watchdog can be told to take gradually more invasive action to restart the stopped thread.

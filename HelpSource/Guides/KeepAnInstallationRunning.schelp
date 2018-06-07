@@ -1,6 +1,6 @@
 TITLE::Keep An Installation Running
 categories:: Control
-related:: Classes/Installation, Classes/WatchDog, Guides/InstallationsOnRaspberryPi
+related:: Classes/KeepInstallationAlive, Classes/WatchDog, Guides/InstallationsOnRaspberryPi
 summary:: How to keep an installation running and recover from crashes.
 
 
@@ -10,15 +10,15 @@ Writing a program that can make it through the length of a single 20 minute perf
 The latest versions of SuperCollider are actually three programs running at once - the IDE; sclang, the language; and scserver, the audio server. Any one of these things can crash.
 
 section:: Your Program
-Presumably, somewhere within your installation, there is a loop.  It might be in a Pbind or in an inf.do. If your code mostly comes from actions attached ot OSC responders or HID events, this is still a loop. Any loop can get stuck. The Installation class can help to check up on your loops.
+Presumably, somewhere within your installation, there is a loop.  It might be in a Pbind or in an inf.do. If your code mostly comes from actions attached ot OSC responders or HID events, this is still a loop. Any loop can get stuck. The KeepInstallationAlive class can help to check up on your loops.
 
-You create one instance of the installation class and then add WatchDogs to check up on your loops.
+You create one instance of the KeepInstallationAlive class and then add WatchDogs to check up on your loops.
 
 code::
 (
 var installation, do_something;
 
-installation = Installation();
+installation = KeepInstallationAlive();
 
 installation.addWatchDog(\main_loop);
 
@@ -39,7 +39,7 @@ code::
 (
 var installation, do_something, task, watchDog;
 
-installation = Installation();
+installation = KeepInstallationAlive();
 
 watchDog = installation.addWatchDog(\main_loop);
 
@@ -76,7 +76,7 @@ code::
 (
 var installation, pbind, watchDog;
 
-installation = Installation();
+installation = KeepInstallationAlive();
 
 watchDog = installation.addWatchDog(\pbind);
 watchDog.addFix({pbind.resume});
@@ -113,16 +113,16 @@ Wait a few moments and try code::p.stop::
 
 section:: The Server
 
-The Installation class also allows you to monitor the server.  You can check if the server has crashed, if it has gone silent, or if it has ceased exceuting some of it's synths.
+The KeepInstallationAlive class also allows you to monitor the server.  You can check if the server has crashed, if it has gone silent, or if it has ceased exceuting some of it's synths.
 
-If the server gets restarted, you may need to reload your synthdefs. code::Installation:: can handle this for you.
+If the server gets restarted, you may need to reload your synthdefs. code::KeepInstallationAlive:: can handle this for you.
 
 code::
 (
 var installation, pbind, watchDog;
 
 {
-	installation = Installation();
+	installation = KeepInstallationAlive();
 
 	installation.boot;
 
@@ -141,14 +141,14 @@ var installation, pbind, watchDog;
 
 ::
 
-You can use Installation's server monitor to check for silence, or crashes or both.
+You can use KeepInstallationAlive's server monitor to check for silence, or crashes or both.
 
 code::
 (
 var installation, pbind, watchDog;
 
 {
-	installation = Installation();
+	installation = KeepInstallationAlive();
 
 	installation.boot;
 
@@ -189,7 +189,7 @@ code::
 (
 var installation, pbind, watchDog, dur;
 
-installation = Installation();
+installation = KeepInstallationAlive();
 
 dur =3;
 
@@ -234,20 +234,20 @@ The watchdog first tries to just retart the synth and if that fails, tries to re
 
 If that fails, it quits sclang.
 
-section:: Installation.wizard
+section:: KeepInstallationAlive.wizard
 
-When Installation fails to get things going again, it can intentionally cause sclang to crash. Obviously, this is a problem in the IDE. However, we will not be running sclang through the IDE. Instead, we'll run it from a BASH script. On your computer (if you have a mac or unix), when you open a terminal, what's running in it is a Bash shell. You can write scripts for this shell, which you edit in a plain text editor. You will still have access to all of SuperCollider's GUI classes.
+When KeepInstallationAlive fails to get things going again, it can intentionally cause sclang to crash. Obviously, this is a problem in the IDE. However, we will not be running sclang through the IDE. Instead, we'll run it from a BASH script. On your computer (if you have a mac or unix), when you open a terminal, what's running in it is a Bash shell. You can write scripts for this shell, which you edit in a plain text editor. You will still have access to all of SuperCollider's GUI classes.
 
-The Installation class contains a wizard to help create the bash scripts for you, after asking you some questions in a series of pop-up windows.
+The KeepInstallationAlive class contains a wizard to help create the bash scripts for you, after asking you some questions in a series of pop-up windows.
 
-To use the wizard, make a temporary change to your code to store the installation class in a global variable. For example:
+To use the wizard, make a temporary change to your code to store the KeepInstallationAlive class in a global variable. For example:
 
 
 code::
 (
 var installation, pbind, watchDog, dur;
 
-installation = Installation();
+installation = KeepInstallationAlive();
 
 dur =3;
 
@@ -262,7 +262,7 @@ This process will not overwrite any files! You can close the open window at any 
 
  First, it will tell you it's running. Then it will prompt you to pick the main file of your installation, which will probably be a .scd file.  The name of this file will be used as the name of your installation.
 
-The next dialog asks whether you intend to use any GUI features.  If your installation has no GUI (or the GUI is running off of a second computer), you can run the installation 'headless', which means without any kind of display.  Otherwise, if you have a screen (because you're using a laptop, for example) or a projector, then these are displays.  You should answer this question for the computer you intent to actually run the installation on.
+The next dialog asks whether you intend to use any GUI features.  If your installation has no GUI (or the GUI is running off of a second computer), you can run the installation 'headless', which means without any kind of display.  Otherwise, if you have a screen (because you're using a laptop, for example) or a projector, then these are displays.  You should answer this question for the computer you intend to actually run the installation on.
 
 Then, it may ask you if you intend to write to the file system. You can use the file system as another way to test if your installation has crashed and needs to be restarted.  This is a good idea .  Otherwise, it's possible that all threads on sclang might get stuck, but sclang might not quit. If it is too stuck to write to the file system, then your bash script(s) will be able to tell that this has happened and restart your installation.
 
@@ -275,7 +275,7 @@ code::
 var installation, pbind, watchDog, dur;
 
 // change the next line:
-installation = Installation(thisProcess.argv[0], thisProcess.argv[1]);
+installation = KeepInstallationAlive(thisProcess.argv[0], thisProcess.argv[1]);
 
 dur =3;
 
@@ -313,7 +313,7 @@ subsection:: Helper Applications
 
 Your installation may rely on other programs, for example, to get data.  Depending on how often you need data, you might call them directly from SuperCollider only when you need them.  Or, these programs might be running all the time and communicate with SuperCollider via OSC.  In that case, you will also need to monitor whether or not they have crashed.
 
-Let's say you have a python script that is reading some information from an internet service.  It might be called InternetService.py. If it's supposed to send regular OSC messages to your program, you can use the Installation class to see if it's still going.
+Let's say you have a python script that is reading some information from an internet service.  It might be called InternetService.py. If it's supposed to send regular OSC messages to your program, you can use the KeepInstallationAlive class to see if it's still going.
 
 code::
 
@@ -325,7 +325,7 @@ OSCFunc({ arg msg, time;
 },'/InternetService', s.addr);
 ::
 
-If you don't expect to get messages very often, you might want to reconsider your design slightly. For example, let's say you want to get an OSC message every time Donald Trump posts something to twitter.  This may be a pause of a few hours. Instead of only sending a message when there's a new message, you could also send a message every few minutes saying there EMPHASIS::hasn't:: been a new message.  If these fail to arrive, then Installation will quit sclang.
+If you don't expect to get messages very often, you might want to reconsider your design slightly. For example, let's say you want to get an OSC message every time Donald Trump posts something to twitter.  This may be a pause of a few hours. Instead of only sending a message when there's a new message, you could also send a message every few minutes saying there EMPHASIS::hasn't:: been a new message.  If these fail to arrive, then KeepInstallationAlive will quit sclang.
 
 In order to make sure your helper program starts and stops appropriately, you'll need to edit the bash file for your installation.
 
@@ -357,7 +357,7 @@ kill $helper || kill -9 $helper
 If you've got more than one helper program, you'll need to start all of them, keep the PID of each in a separate variable and be certain to kill all of them.
 
 
-subsection::Starting the Installation on Boot
+subsection::Starting Your Installation on Boot
 
 Depending on whether you said you were using a display, the wizard will have made one of two files. If you are on a mac, you will not use either of these, but instead will add the YourInstallation.sh file to the list of programs that start on login.
 
@@ -382,7 +382,7 @@ In this case, you can stop your installation by typing code::
 
 section:: Deploying your code
 
-When you develop your installation, you're probably working on your own computer, logged in as your self.  When you actually deploy the installation, you will probably not want to do this.  Even if you use your own laptop for the installation, it's a good idea to make a separate user account to run the installation. Give this user as few rights as possible. For example, you might not want to allow them to administrate the machine.  That way, if somebody starts trying to use your computer, at least they can't see your browser history.
+When you develop your installation, you're probably working on your own computer, logged in as yourself.  When you actually deploy the installation, you will probably not want to do this.  Even if you use your own laptop for the installation, it's a good idea to make a separate user account to run the installation. Give this user as few rights as possible. For example, you might not want to allow them to administrate the machine.  That way, if somebody starts trying to use your computer, at least they can't see your browser history.
 
 You will need a way to manage your code, so it is available both in your own account on your own computer, and in whatever accounts on whatever computers you need.  Using git is a good solution to this. As it says in the link::Guides/UsingQuarks:: helpfile:
 
@@ -397,11 +397,11 @@ Bitbucket offers free hosting for private repositories, and you can setup your o
 
 Hard drives die, backups fail, people make mistakes. If you keep a copy on bitbucket then your work is that much safer."
 
-And, indeed, git makes it much easier to keep track of changes accorss computers. If you have your code stored in git and change it on your own machine, for example, you can push the changes back to your repository, then pull them down to your target machine. Later, when you make emergency alerations (to fix the bugs that invariably don't appear until you've arrived at the show), you can also check those changes back into the central repository.
+And, indeed, git makes it much easier to keep track of changes across computers. If you have your code stored in git and change it on your own machine, for example, you can push the changes back to your repository, then pull them down to your target machine. Later, when you make emergency alerations (to fix the bugs that invariably don't appear until you've arrived at the show), you can also check those changes back into the central repository.
 
 subsection:: Dependencies
 
-If you use the Installation quark, then it's a dependency that needs to be injstalled on the deployment computer, as do any other Quarks and programs that you rely on.  Make notes of what your dependencies are and put them in your README.md file.
+If you use the KeepInstallationAlive quark, then it's a dependency that needs to be injstalled on the deployment computer, as do any other Quarks and programs that you rely on.  Make notes of what your dependencies are and put them in your README.md file.
 
 subsection:: Making Things Pretty
 
