@@ -1,6 +1,6 @@
 WatchDog {
 
-	var walker, alive,task, thread, fixes, <lastCheckIn, <tries, <>dur, <>canQuit;
+	var walker, alive,task, thread, fixes, <lastCheckIn, <tries, <>dur, <>canQuit, <isAlive;
 
 	*new { |walker, dur=5, initialWait=0, tries=3, canQuit=true|
 		^super.new.init(walker, dur, initialWait, tries, canQuit)
@@ -13,6 +13,7 @@ WatchDog {
 		canQuit = quitter;
 		tries = try;
 		fixes = [];
+		isAlive = true;
 
 		this.buildTask(initialWait);
 
@@ -80,7 +81,7 @@ WatchDog {
 				dur.wait;
 				alive = alive -1;
 
-				alive.postln;
+				//alive.postln;
 
 				(alive <= 0).if({
 					local_alive = alive.abs;
@@ -90,10 +91,12 @@ WatchDog {
 						canQuit.if({
 							1.exit
 						})
-						}, { // else
+					}, { // else
 
-							action = fixes[local_alive];
-							action.value();
+						action = fixes[local_alive];
+						try {
+							action.value(); // this might fail
+						} { };
 					});
 				});
 			});
@@ -116,7 +119,7 @@ WatchDog {
 
 	checkIn{
 
-		"checking in".postln;
+		//"checking in".postln;
 		alive = tries;
 		lastCheckIn = Date.gmtime().rawSeconds;
 
@@ -128,8 +131,8 @@ WatchDog {
 
 		thread.notNil.if({
 			thread.play
-			}, {
-				thread = task.play;
+		}, {
+			thread = task.play;
 		});
 	}
 
@@ -157,12 +160,17 @@ WatchDog {
 		})
 	}
 
+	restart {|initialWait=0|
+		this.buildTask(initialWait);
+	}
+
+
 
 }
 
 DogWalker {
 
-	var dogs, file;
+	var dogs, <file;
 
 	*new{|writeFile|
 		^super.new.init(writeFile);
@@ -221,6 +229,15 @@ DogWalker {
 	}
 	reset{|id|
 		dogs[id].reset()
+	}
+
+	ressurectAll {
+		//only raise the dead
+		dogs.keysValuesDo({|key, dog|
+			dog.isAlive.not.if({
+				dog.restart;
+			})
+		})
 	}
 
 

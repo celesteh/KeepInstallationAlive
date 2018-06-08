@@ -24,7 +24,7 @@ To use this these pairs,
 code::
 (
 var inst;
-inst = Installation("/home/me/Documents/code/sc/my_installation.config");
+inst = KeepInstallationAlive("/home/me/Documents/code/sc/my_installation.config");
 inst.config[\name].postln;
 )
 ::
@@ -48,15 +48,86 @@ A function evaluated when the server is known to be booted
 argument:: checkIn
 If true, then check in with the watchdog associated with id
 argument:: id
-The id of the WatchDog to chekc in to
+The id of the WatchDog to check in to
 Discussion::
 This method must be called from a Routine. It tries to the boot the server, on the port given when the KeepInstallationAlive object is created (or on the default port, if nothing is specified). Once the server is known to be booted, the action is evaluated, optionally synths are loaded, and the thread optionally checks in.
 If the server is unable to boot, sclang quits.
 
 Method:: addSynthDef
-Because the installation object may need to restart the server, you will need to add your SynthDefs to it, so it can re-load them.
+Because the KeepInstallationAlive object may need to restart the server, you will need to add your SynthDefs to it, so it can re-load them.
 argument:: synthDef
 A SynthDef object
+
+Method:: addGroup
+Because the KeepInstallationAlive object may need to restart the server, you will need to add your Groups to it, so it can re-create them.
+argument:: name
+The name of the Group
+argument:: target
+The target of the group (which may be the strong::name:: of another group)
+argument:: addAction
+Where to add the group relative to the target
+Discussion::
+If the server is restarted, your groups may need to be 
+recreated. This method creates groups by a given name and keeps track of how the groups are 
+related to other groups. If you are precise in how your groups are related to each other, it will
+recreate your group tree.  For example, if group 'a' must come after group 'b', you will need
+to explicitly specify this instead of just relying on the order that the gorups are added.
+
+code::
+(
+
+var installation;
+installation = KeepInstallationAlive();
+
+installation.addGroup('a');
+installation.addGroup('b', 'a', 'addAfter');
+
+...
+::
+
+The KeepInstallationAlive object keeps the groups in an IdentityDictionary called groups. 
+So when you wish to use your groups:
+
+code::
+
+...
+Pbind(
+	\group, Pfunc({ installation.groups['a'] }),
+...
+::
+
+In the above example, we use a Pfunc because if the server is restarted, installation.groups['a']
+will point at a different object after the group tree is restored.
+
+
+Method:: addBus
+Because the KeepInstallationAlive object may need to restart the server, you will need to add your Buses to it, so it can re-create them.
+argument:: name
+The name of the Bus you want to create
+argument:: rate
+Rate symbol: \control or \audio
+argument:: numChannels
+Number of channels to allocate
+Discussion::
+If the server is restarted, your buses may need to be recreated. This method creates buses by a 
+given name and tracks them so that they can be recreated after a restart.
+
+code::
+(
+var installation;
+installation = KeepInstallationAlive();
+
+installation.addBus(\fx, \audio, 2);
+
+Pbind(
+	\out, Pfunc({installation.buses[\fx]}),
+...
+::
+
+In the above example, we use a Pfunc because if the server is restarted, installation.busses[\fx]
+will point at a different object after the buses are restored.
+
+
 
 Method:: loadSynthDefs
 Add all of the synthDefs to the Server
@@ -65,6 +136,9 @@ Method:: monitorServer
 Returns:: True if the Server is being monitored, False if not
 
 Method:: setMonitorServer
+
+Monitor if the server is running and optionally listen for silence.
+
 argument:: monitor
 True turns monitoring on, false turns it off
 argument:: dur
@@ -75,12 +149,17 @@ argument:: watchDogDur
 How many consecutive seconds the server can fail to send notifications
 argument:: action
 Evaluated when the server falls silent for more than the given duration
+
 Returns:: This returns the WatchDog associated with server notifications
+
+
+Discussion::
+The following example listens for silence and starts a Synth when it occurs
 
 code::
 (
 {
-	var inst, dog;
+	var inst, watchdog;
 	inst = KeepInstallationAlive();
 	inst.boot;
 	inst.addSynthDef(
@@ -91,11 +170,32 @@ code::
 			Out.ar(out, (sin * env).dup);
 	}));
 
-	dog = inst.setMonitorServer(true, action:{Synth(\sin)});
+	watchdog = inst.setMonitorServer(true, action:{Synth(\sin)});
 
 }.fork
 )
 ::
+
+It's also possible to use this method only to monitor if the server has stopped and automatically restart it.
+
+code::
+(
+var installation;
+
+installation = KeepInstallationAlive();
+installation.boot();
+installation.setMonitorServer(true, 0); // don't listen for silence
+)
+
+(
+// wait a moment, then execute the following line by itself
+Server.local.quit
+)
+::
+
+If you quit the server in the first code example, it will also restart
+
+
 
 
 Method:: addWatchDog

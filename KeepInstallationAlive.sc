@@ -1,6 +1,7 @@
 KeepInstallationAlive {
 
-	var watchDogs, <config, <>synthdefs, <monitorServer, lastrms, monitorSynth, osc_listener;
+	var watchDogs, <config, <>synthdefs, <>groups, <>buses, groupdesc, busdesc, <monitorServer, lastrms, monitorSynth, osc_listener, >bootAction;
+
 
 	*new {|config_file_path, port|
 		^super.new.init(config_file_path, port)
@@ -22,7 +23,14 @@ KeepInstallationAlive {
 
 		//synthdefs
 		synthdefs=[];
+		groups=IdentityDictionary();
+		groups[\server] = Server.default;
+		groupdesc = IdentityDictionary();
+		buses = IdentityDictionary();
+		busdesc=[];
 	}
+
+
 
 	readConfig{|config_file_path|
 		var config_arr;
@@ -57,9 +65,11 @@ KeepInstallationAlive {
 		});
 	}
 
+
 	port {|port|
 		this.port_(port);
 	}
+
 
 	addWatchDog { |id, dur=5, initialWait=0, tries=3, canQuit=true|
 		^watchDogs.addWatchDog(id, dur, initialWait, tries, canQuit);
@@ -88,6 +98,47 @@ KeepInstallationAlive {
 	}
 
 
+	// to here ok
+
+	addGroup {|name, target, addAction='addToHead'|
+
+		var resolved_target, group;
+
+		target.isNil.if({
+			target = \server;
+		});
+
+		resolved_target = groups[target];
+		resolved_target.isNil.if({
+
+			"% not found in dictionary\n".format(target).warn;
+			resolved_target = target;
+		});
+
+		group = Group(resolved_target, addAction);
+		groups[name.asSymbol] = group;
+
+		groupdesc[name.asSymbol] = [target, addAction];
+
+		//^group
+	}
+
+	// to here ok
+
+	addBus { |name, rate=\audio, numChannels = 1|
+
+		var bus;
+
+		bus = Bus.alloc(rate, Server.default, numChannels);
+		buses[name.asSymbol] = bus;
+
+		busdesc = busdesc.add([name.asSymbol, rate, numChannels]);
+
+
+	}
+
+	// to here ok
+
 	loadSynthDefs {
 
 
@@ -96,6 +147,102 @@ KeepInstallationAlive {
 		});
 
 		this.startMonitor;
+
+	}
+
+
+	loadGroups {
+
+
+		var group, something_sent, sent, failed, f2, target, addAction, item;
+
+		failed = [];
+		sent = [\server];
+
+		something_sent = false;
+
+		groups = IdentityDictionary.new;
+		groups[\server] = Server.default;
+
+		groupdesc.keysValuesDo({|key, value|
+
+
+			(key != \server).if({ // this is a possible target, but not a group
+
+				target = value[0];
+				addAction = value[1];
+				sent.includes(target).if({
+					group = Group(groups[target.asSymbol], addAction);
+					sent = sent.add(key);
+					something_sent = true;
+					groups[key] = group;
+				}, {
+					failed = failed.add(key);
+				})
+			})
+
+		});
+
+
+
+		{ something_sent && (failed.size > 0)}.while({
+
+			something_sent = false;
+			f2 = [];
+			failed.do({|key|
+
+				item = groupdesc[key];
+				target = item[0];
+				addAction = item[1];
+				sent.includes(target).if({
+					group =Group(groups[target.asSymbol], addAction);
+					groups[key] = group;
+					sent = sent.add(key);
+					something_sent = true;
+				}, {
+					f2 = f2.add(key);
+				});
+
+			});
+
+			failed = f2;
+
+
+		});
+
+		f2 = [];
+		failed.do({|key|
+
+			item = groupdesc[key];
+			target = item[0];
+			addAction = item[1];
+
+			try {
+
+				group = Group(target, addAction);
+				groups[key] = group;
+			} {
+				f2 = f2.add(key);
+			}
+		});
+		failed =f2;
+
+		(failed.size > 0).if({
+			"Some groups failed to reload %".format(failed).warn;
+		});
+
+
+	}
+
+
+	loadbuses {
+
+		buses = IdentityDictionary.new;
+
+		busdesc.do({|bus|
+
+			buses[bus[0]] = Bus.alloc(bus[1], Server.default, bus[2])
+		});
 
 	}
 
@@ -109,9 +256,9 @@ KeepInstallationAlive {
 				monitorSynth.isRunning.if({
 
 					shouldStart=false;
-					}, {
-						// if we're not running for some reason, then quit us
-						monitorSynth.free;
+				}, {
+					// if we're not running for some reason, then quit us
+					monitorSynth.free;
 				});
 			});
 
@@ -123,12 +270,16 @@ KeepInstallationAlive {
 				});
 			});
 		})
+
 	}
 
 
 	boot { |loadSynths=false, action, checkIn = false, id|
 		// This must be called from a thread
 		var condition, bundle;
+
+		action.notNil.if({ bootAction = action });
+		action = bootAction;
 
 		//"entering boot".postln;
 
@@ -145,6 +296,7 @@ KeepInstallationAlive {
 		Server.default.doWhenBooted(limit: 5000, onFailure:{1.exit}, // long limit
 			onComplete: {
 				action.value;
+				//watchDogs.resurrectAll; // dead server is often the problem
 				condition.test = true;
 				condition.signal;
 		});
@@ -164,6 +316,8 @@ KeepInstallationAlive {
 
 		loadSynths.if({
 			this.loadSynthDefs();
+			this.loadGroups();
+			this.loadbuses();
 		});
 
 		try {
@@ -197,7 +351,7 @@ KeepInstallationAlive {
 			);
 
 			dog = this.addWatchDog(\loudnessMonitoringForInstallation, watchDogDur, 10, canQuit:true); //initialWait is 10 seconds
-			dog.addFix({this.loadSynthDefs});
+			dog.addFix({this.loadSynthDefs; this.loadGroups; this.loadBuses;});
 			dog.addFix({this.startMonitor});
 			dog.addFix({this.boot(true)});
 
@@ -209,7 +363,7 @@ KeepInstallationAlive {
 			lastrms=Array.fill(dur, {1});
 			osc_listener = OSCFunc({ |msg, time|
 				var rms;
-				"osc message".postln;
+				//"osc message".postln;
 				this.checkIn(\loudnessMonitoringForInstallation);
 
 				rms = msg[4].asFloat.max(msg[6].asFloat);
@@ -237,19 +391,19 @@ KeepInstallationAlive {
 
 			monitorSynth = Synth(\stereoListenForSilence,  nil, RootNode(Server.default), \addToTail);
 
-			} , { // else
+		} , { // else
 
 
-				this.removeWatchDog(\loudnessMonitoringForInstallation);
+			this.removeWatchDog(\loudnessMonitoringForInstallation);
 
-				osc_listener.notNil.if({
-					osc_listener.free;
-				});
+			osc_listener.notNil.if({
+				osc_listener.free;
+			});
 
 
-				monitorSynth.notNil.if({
-					monitorSynth.free;
-				});
+			monitorSynth.notNil.if({
+				monitorSynth.free;
+			});
 
 		});
 
@@ -279,7 +433,7 @@ KeepInstallationAlive {
 		options.notNil.if({
 
 			menu=PopUpMenu(win.view,Rect(10,10,320,20))
-			        .items_(options);
+			.items_(options);
 			layout.nextLine;
 
 		});
@@ -328,15 +482,15 @@ KeepInstallationAlive {
 									("To autostart this installation on a RaspberryPi or Linux machine, \n"
 										"Copy %.desktop to ~/.config/autostart/, creating the directory if necessary").format(name)
 								);
-								} , {
-									this.makeWin(
-										("To autostart this installation on a RaspberryPi or Linux machine, \n"
-											"At the prompt, run:\n"
-											"sudo cp %.init.d /etc/init.d/%\n"
-											"sudo chmod 755 /etc/init.d/%\n"
-											"sudo update-rc.d % defaults"
-										).format(name, name, name, name)
-									)
+							} , {
+								this.makeWin(
+									("To autostart this installation on a RaspberryPi or Linux machine, \n"
+										"At the prompt, run:\n"
+										"sudo cp %.init.d /etc/init.d/%\n"
+										"sudo chmod 755 /etc/init.d/%\n"
+										"sudo update-rc.d % defaults"
+									).format(name, name, name, name)
+								)
 							});
 
 						}
@@ -368,8 +522,8 @@ KeepInstallationAlive {
 									(val.value==0).if({
 
 										hasGui = true;
-										} , {
-											hasGui = false;
+									} , {
+										hasGui = false;
 									});
 
 									watchDogs.writeFile.isNil.if({
@@ -387,9 +541,9 @@ KeepInstallationAlive {
 											},
 											["Yes", "No"]
 										)
-										} , {
+									} , {
 
-											remainder.value;
+										remainder.value;
 									});
 								},
 								["Yes", "No"]
@@ -404,6 +558,7 @@ KeepInstallationAlive {
 
 
 	}
+
 
 
 	generate_bash_files{|dir, name, hasGui = true|
@@ -488,8 +643,8 @@ KeepInstallationAlive {
 				"        kill $alive_pid\n"
 			).format(name)
 
-			}, {
-				alive = "        wait $pid\n"
+		}, {
+			alive = "        wait $pid\n"
 		});
 
 
@@ -509,18 +664,18 @@ KeepInstallationAlive {
 				"        $sclang %.scd %.config $port&\n"
 				"        pid=$!\n"
 			);
-			} , {
-				sclang = (
-					//"        if [ \"$OSTYPE\" == \"linux-gnu\" ] || [ \"$OSTYPE\" == \"freebsd\"* ] || [ $raspberry -eq 1 ]\n"
-					"        if [ $raspberry -eq 1 ]\n"
-					"            then\n"
-					"                /usr/bin/xvfb-run --server-args=\"-screen 0, 1280x800x24\" $sclang %.scd %.config $port&\n"
-					"                pid=$!\n"
-					"            else\n"
-					"                $sclang %.scd %.config $port&\n"
-					"                pid=$!\n"
-					"        fi\n"
-				);
+		} , {
+			sclang = (
+				//"        if [ \"$OSTYPE\" == \"linux-gnu\" ] || [ \"$OSTYPE\" == \"freebsd\"* ] || [ $raspberry -eq 1 ]\n"
+				"        if [ $raspberry -eq 1 ]\n"
+				"            then\n"
+				"                /usr/bin/xvfb-run --server-args=\"-screen 0, 1280x800x24\" $sclang %.scd %.config $port&\n"
+				"                pid=$!\n"
+				"            else\n"
+				"                $sclang %.scd %.config $port&\n"
+				"                pid=$!\n"
+				"        fi\n"
+			);
 		});
 		sclang = sclang.format(name, name);
 
@@ -602,59 +757,59 @@ KeepInstallationAlive {
 				file.close;
 			});
 
-			}, {
-				filepath=("%/%.init.d").format(dir,name);
-				File.exists(filepath).not.if({
-					file=File(filepath, "w");
-					file.write(
-						(
-							"#!/bin/sh\n"
-							"### BEGIN INIT INFO\n"
-							"# Provides:          %\n"
-							"# Required-Start:    $local_fs\n"
-							"# Required-Stop:     $local_fs\n"
-							"# Default-Start:     2 3 4 5\n"
-							"# Default-Stop:      0 1 6\n"
-							"# Short-Description: Start/stop %\n"
-							"### END INIT INFO\n"
-							" \n"
-							"# Set the USER variable to the name of the user to start % under\n"
-							"export USER='pi'\n"
-							" \n"
-							"case \"$1\" in\n"
-							"  start)\n"
-							"    su $USER -c '%/%.sh'\n"
-							"    echo \"Starting %\"\n"
-							"    ;;\n"
-							"  stop)\n"
-							"    pkill %.sh\n"
-							"    pkill keepAlive_%.sh\n"
-							"    pkill sclang\n"
-							"    pkill scsynth\n"
-							"    echo \"% stopped\"\n"
-							"    ;;\n"
-							"  *)\n"
-							"    echo \"Usage: /etc/init.d/% {start|stop}\"\n"
-							"    exit 1\n"
-							"    ;;\n"
-							"esac\n"
-							"exit 0\n"
+		}, {
+			filepath=("%/%.init.d").format(dir,name);
+			File.exists(filepath).not.if({
+				file=File(filepath, "w");
+				file.write(
+					(
+						"#!/bin/sh\n"
+						"### BEGIN INIT INFO\n"
+						"# Provides:          %\n"
+						"# Required-Start:    $local_fs\n"
+						"# Required-Stop:     $local_fs\n"
+						"# Default-Start:     2 3 4 5\n"
+						"# Default-Stop:      0 1 6\n"
+						"# Short-Description: Start/stop %\n"
+						"### END INIT INFO\n"
+						" \n"
+						"# Set the USER variable to the name of the user to start % under\n"
+						"export USER='pi'\n"
+						" \n"
+						"case \"$1\" in\n"
+						"  start)\n"
+						"    su $USER -c '%/%.sh'\n"
+						"    echo \"Starting %\"\n"
+						"    ;;\n"
+						"  stop)\n"
+						"    pkill %.sh\n"
+						"    pkill keepAlive_%.sh\n"
+						"    pkill sclang\n"
+						"    pkill scsynth\n"
+						"    echo \"% stopped\"\n"
+						"    ;;\n"
+						"  *)\n"
+						"    echo \"Usage: /etc/init.d/% {start|stop}\"\n"
+						"    exit 1\n"
+						"    ;;\n"
+						"esac\n"
+						"exit 0\n"
 
-						).format(name, name, name, dir, name, name, name, name, name, name)
-					);
-					file.close;
-				})
+					).format(name, name, name, dir, name, name, name, name, name, name)
+				);
+				file.close;
+			})
 		});
 
 
 
 		wrote_config.if ({
 			"Created a configuration file %/%.config".format(dir,name).postln;
-			} , {
-				watchDogs.writeFile.notNil.if({
-					"Please append to your configuration file:".postln;
-					conf.postln;
-				});
+		} , {
+			watchDogs.writeFile.notNil.if({
+				"Please append to your configuration file:".postln;
+				conf.postln;
+			});
 		});
 		watchDogs.writeFile.isNil.if({
 
@@ -675,12 +830,13 @@ KeepInstallationAlive {
 		"To autostart this installation on a RaspberryPi or Linux machine".postln;
 		hasGui.if({
 			"Copy %.desktop to ~/.config/autostart/, creating the directory if necessary".format(name).postln;
-			} , {
-				"At the prompt, run:".postln;
-				"sudo cp %.init.d /etc/init.d/%".format(name, name).postln;
-				"sudo chmod 755 /etc/init.d/%".format(name).postln;
-				"sudo update-rc.d % defaults".format(name).postln;
+		} , {
+			"At the prompt, run:".postln;
+			"sudo cp %.init.d /etc/init.d/%".format(name, name).postln;
+			"sudo chmod 755 /etc/init.d/%".format(name).postln;
+			"sudo update-rc.d % defaults".format(name).postln;
 		});
 
 	}
+
 }
