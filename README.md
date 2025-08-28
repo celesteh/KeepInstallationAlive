@@ -1,3 +1,5 @@
+Moved to Codeberg: https://codeberg.org/celesteh/KeepInstallationAlive
+
 # KeepInstallationAlive
 A SuperCollider Quark to help keep installations running
 
